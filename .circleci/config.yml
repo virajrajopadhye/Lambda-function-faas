@@ -1,0 +1,52 @@
+# JavaScript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2.1
+orbs:
+  node: circleci/node@1.1.6
+jobs:
+  lambda_check:
+    # executor: aws-cli/default
+    docker:
+      # specify the version you desire here
+      - image: circleci/node:10.16.3
+    working_directory: ~/faas
+    steps:
+      - checkout
+      - run: 
+          name: NPM Install 
+          command: |
+            npm install
+            ls
+            cd node_modules
+            ls
+            cd ..
+      - run: 
+          name: Install AWSCLI
+          command : sudo apt-get install awscli -y
+      - run:
+          name: Zip Artifact
+          command: |
+            ls
+            cd node_modules
+            ls
+            cd ..
+            zip -r index.zip test.js package.json package-lock.json node_modules
+            touch 777 lambdaFile.txt
+            pwd
+            ls
+      - run:
+          name: Upload LambdaFunction to S3
+          command: |
+            aws s3 cp index.zip s3://${S3_CODEDEPLOY_BUCKET}/index.zip
+      - run:
+          name: Update lambdaFunction code
+          command: |
+            aws lambda update-function-code --function-name Email_Service --s3-bucket ${S3_CODEDEPLOY_BUCKET} --s3-key index.zip --region ${REGION} > lambdaFile.txt
+      
+workflows:
+  version: 2
+  lambda:
+    jobs:
+      - lambda_check
